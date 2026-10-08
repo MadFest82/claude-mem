@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Capture a single Discourse post as a PNG, framed like it appears on the forum.
-// Usage: node screenshot.cjs <post_id> <out.png>
+// Usage: node screenshot.cjs <post_id> <out.jpg|out.png>
+// JPEG keeps files small enough to upload through the Google Drive connector.
 const { chromium } = require('playwright');
 
 const FORUM = process.env.FORUM_URL || 'https://forum.ephore-market.com';
@@ -8,7 +9,7 @@ const FORUM = process.env.FORUM_URL || 'https://forum.ephore-market.com';
 async function main() {
   const [postId, out] = process.argv.slice(2);
   if (!postId || !out) {
-    console.error('Usage: node screenshot.cjs <post_id> <out.png>');
+    console.error('Usage: node screenshot.cjs <post_id> <out.jpg|out.png>');
     process.exit(1);
   }
 
@@ -23,7 +24,7 @@ async function main() {
   try {
     const page = await browser.newPage({
       viewport: { width: 820, height: 1400 },
-      deviceScaleFactor: 2,
+      deviceScaleFactor: Number(process.env.SCALE || 1.5),
       colorScheme: 'light',
       locale: 'fr-FR',
     });
@@ -54,8 +55,10 @@ async function main() {
 
     const box = await article.boundingBox();
     const pad = 10;
+    const jpeg = /\.jpe?g$/i.test(out);
     await page.screenshot({
       path: out,
+      ...(jpeg ? { type: 'jpeg', quality: 72 } : {}),
       clip: {
         x: Math.max(0, box.x - pad),
         y: Math.max(0, box.y - pad),
